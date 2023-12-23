@@ -111,9 +111,10 @@ class Worker extends IlluminateWorker
             /** @var Connection $connection */
             $connection = $entityManager->getConnection();
 
-            $test = $connection->executeQuery('SELECT 1;');
-
-            if (!$test instanceof \Doctrine\DBAL\Result) {
+            try {
+                // Ping.
+                $connection->executeQuery('SELECT 1;');
+            } catch (Exception $e) {
                 $connection->close();
                 $connection->connect();
             }
