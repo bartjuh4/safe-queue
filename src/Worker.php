@@ -2,6 +2,7 @@
 
 namespace Digbang\SafeQueue;
 
+use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use Exception;
@@ -11,7 +12,6 @@ use Illuminate\Contracts\Container\Container;
 use Illuminate\Queue\QueueManager;
 use Illuminate\Queue\Worker as IlluminateWorker;
 use Illuminate\Queue\WorkerOptions;
-use Symfony\Component\Debug\Exception\FatalThrowableError;
 use Throwable;
 
 class Worker extends IlluminateWorker
@@ -48,8 +48,8 @@ class Worker extends IlluminateWorker
      *
      * Get the next job from the queue connection.
      *
-     * @param  \Illuminate\Contracts\Queue\Queue  $connection
-     * @param  string  $queue
+     * @param \Illuminate\Contracts\Queue\Queue $connection
+     * @param string $queue
      * @return \Illuminate\Contracts\Queue\Job|null
      */
     protected function getNextJob($connection, $queue)
@@ -65,7 +65,7 @@ class Worker extends IlluminateWorker
         } catch (Exception $e) {
             $exception = new QueueSetupException("Error in queue setup while getting next job", 0, $e);
         } catch (Throwable $e) {
-            $exception = new QueueSetupException("Error in queue setup while getting next job", 0, new FatalThrowableError($e));
+            $exception = new QueueSetupException("Error in queue setup while getting next job", 0, $e);
         }
 
         if ($exception) {
@@ -108,9 +108,12 @@ class Worker extends IlluminateWorker
     private function assertGoodDatabaseConnection()
     {
         foreach ($this->managerRegistry->getManagers() as $entityManager) {
+            /** @var Connection $connection */
             $connection = $entityManager->getConnection();
 
-            if ($connection->ping() === false) {
+            $test = $connection->executeQuery('SELECT 1;');
+
+            if (!$test instanceof \Doctrine\DBAL\Result) {
                 $connection->close();
                 $connection->connect();
             }
